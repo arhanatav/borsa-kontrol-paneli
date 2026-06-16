@@ -9,7 +9,6 @@ st.set_page_config(
     layout="wide"
 )
 
-
 st.title("Borsa Kontrol Paneli")
 st.caption("Eğitim ve kişisel takip amaçlıdır. Al-sat tavsiyesi değildir.")
 
@@ -68,13 +67,54 @@ def fiyat_verisi_al(symbol, period="1y"):
     return data
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=21600)
 def temel_bilgi_al(symbol):
+    info = {}
+    fast = {}
+
     try:
         t = yf.Ticker(symbol)
-        return t.get_info()
+
+        try:
+            f = t.fast_info
+            fast["last_price"] = f.get("last_price", None)
+            fast["market_cap"] = f.get("market_cap", None)
+            fast["shares"] = f.get("shares", None)
+            fast["currency"] = f.get("currency", None)
+        except:
+            pass
+
+        try:
+            info = t.get_info()
+        except Exception as e:
+            info = {"_hata": str(e)}
+
+    except Exception as e:
+        info = {"_hata": str(e)}
+
+    return info, fast
+
+
+@st.cache_data(ttl=21600)
+def finansal_tablolari_al(symbol):
+    t = yf.Ticker(symbol)
+
+    income = pd.DataFrame()
+    balance = pd.DataFrame()
+
+    try:
+        income = t.income_stmt
+        if income.empty:
+            income = t.financials
     except:
-        return {}
+        pass
+
+    try:
+        balance = t.balance_sheet
+    except:
+        pass
+
+    return income, balance
 
 
 def rsi(series, period=14):
@@ -158,6 +198,43 @@ def teknik_analiz(symbol, period="1y"):
     return data, rapor
 
 
+def df_deger(df, isimler):
+    try:
+        if df is None or df.empty:
+            return None
+
+        for isim in isimler:
+            if isim in df.index:
+                seri = df.loc[isim].dropna()
+                if len(seri) > 0:
+                    return float(seri.iloc[0])
+    except:
+        return None
+
+    return None
+
+
+def df_buyume(df, isimler):
+    try:
+        if df is None or df.empty:
+            return None
+
+        for isim in isimler:
+            if isim in df.index:
+                seri = df.loc[isim].dropna()
+
+                if len(seri) >= 2:
+                    son = float(seri.iloc[0])
+                    onceki = float(seri.iloc[1])
+
+                    if onceki != 0:
+                        return (son / onceki) - 1
+    except:
+        return None
+
+    return None
+
+
 def peg_yorumla(peg):
     try:
         if peg is None or pd.isna(peg):
@@ -180,33 +257,107 @@ def peg_yorumla(peg):
 
 
 def temel_analiz(symbol):
-    info = temel_bilgi_al(symbol)
+    info, fast = temel_bilgi_al(symbol)
+    income, balance = finansal_tablolari_al(symbol)
 
-    if not info:
-        return None
+    info = info or {}
+    fast = fast or {}
 
     fk = info.get("trailingPE")
     ileri_fk = info.get("forwardPE")
     pd_dd = info.get("priceToBook")
-
     peg = info.get("trailingPegRatio") or info.get("pegRatio")
-    kar_buyumesi = info.get("earningsGrowth")
+
     gelir_buyumesi = info.get("revenueGrowth")
+    kar_buyumesi = info.get("earningsGrowth")
+
+    piyasa_degeri = info.get("marketCap") or fast.get("market_cap")
+    son_fiyat = info.get("currentPrice") or fast.get("last_price")
+    hisse_sayisi = fast.get("shares")
+
+    if piyasa_degeri is None and son_fiyat is not None and hisse_sayisi is not None:
+        piyasa_degeri = son_fiyat * hisse_sayisi
+
+    gelir = info.get("totalRevenue") or df_deger(
+        income,
+        ["Total Revenue", "Operating Revenue"]
+    )
+
+    brut_kar = df_deger(
+        income,
+        ["Gross Profit"]
+    )
+
+    faaliyet_kari = df_deger(
+        income,
+        ["Operating Income", "Operating Income or Loss"]
+    )
+
+    net_kar = df_deger(
+        income,
+        ["Net Income", "Net Income Common Stockholders"]
+    )
+
+    ozkaynak = df_deger(
+        balance,
+        ["Stockholders Equity", "Total Equity Gross Minority Interest"]
+    )
+
+    borc = info.get("totalDebt") or df_deger(
+        balance,
+        ["Total Debt", "Long Term Debt", "Short Long Term Debt Total"]
+    )
+
+    nakit = info.get("totalCash") or df_deger(
+        balance,
+        [
+            "Cash And Cash Equivalents",
+            "Cash Cash Equivalents And Short Term Investments"
+        ]
+    )
+
+    if gelir_buyumesi is None:
+        gelir_buyumesi = df_buyume(
+            income,
+            ["Total Revenue", "Operating Revenue"]
+        )
+
+    if kar_buyumesi is None:
+        kar_buyumesi = df_buyume(
+            income,
+            ["Net Income", "Net Income Common Stockholders"]
+        )
+
+    brut_marj = info.get("grossMargins")
+    if brut_marj is None and brut_kar is not None and gelir:
+        brut_marj = brut_kar / gelir
+
+    faaliyet_marj = info.get("operatingMargins")
+    if faaliyet_marj is None and faaliyet_kari is not None and gelir:
+        faaliyet_marj = faaliyet_kari / gelir
+
+    net_marj = info.get("profitMargins")
+    if net_marj is None and net_kar is not None and gelir:
+        net_marj = net_kar / gelir
+
+    roe = info.get("returnOnEquity")
+    if roe is None and net_kar is not None and ozkaynak:
+        roe = net_kar / ozkaynak
+
+    if pd_dd is None and piyasa_degeri is not None and ozkaynak and ozkaynak > 0:
+        pd_dd = piyasa_degeri / ozkaynak
+
+    if fk is None and piyasa_degeri is not None and net_kar is not None and net_kar > 0:
+        fk = piyasa_degeri / net_kar
 
     if peg is None and fk is not None and kar_buyumesi is not None:
         if kar_buyumesi > 0:
             peg = fk / (kar_buyumesi * 100)
 
-    piyasa_degeri = info.get("marketCap")
-    firma_degeri = info.get("enterpriseValue")
-    gelir = info.get("totalRevenue")
-    brut_marj = info.get("grossMargins")
-    faaliyet_marj = info.get("operatingMargins")
-    net_marj = info.get("profitMargins")
-    roe = info.get("returnOnEquity")
-    borc = info.get("totalDebt")
-    nakit = info.get("totalCash")
     borc_ozkaynak = info.get("debtToEquity")
+    if borc_ozkaynak is None and borc is not None and ozkaynak and ozkaynak > 0:
+        borc_ozkaynak = (borc / ozkaynak) * 100
+
     beta = info.get("beta")
 
     skor = 0
@@ -242,13 +393,15 @@ def temel_analiz(symbol):
     else:
         yorum = "Temel görünüm zayıf veya veri eksik"
 
+    veri_durumu = "Normal"
+
+    if "_hata" in info:
+        veri_durumu = "Yahoo temel veri limiti olabilir; bilanço verisinden hesaplama denendi"
+
     rapor = {
         "Sembol": symbol,
         "Şirket": info.get("longName", symbol),
-        "Sektör": info.get("sector", "-"),
-        "Endüstri": info.get("industry", "-"),
         "Piyasa Değeri": para_format(piyasa_degeri),
-        "Firma Değeri": para_format(firma_degeri),
         "Gelir": para_format(gelir),
         "F/K": oran_format(fk),
         "İleri F/K": oran_format(ileri_fk),
@@ -266,7 +419,8 @@ def temel_analiz(symbol):
         "Borç / Özkaynak": oran_format(borc_ozkaynak),
         "Beta": oran_format(beta),
         "Temel Skor": skor,
-        "Temel Yorum": yorum
+        "Temel Yorum": yorum,
+        "Veri Durumu": veri_durumu
     }
 
     return rapor
@@ -319,7 +473,7 @@ with tab1:
     with col1:
         symbol = st.text_input(
             "Sembol gir",
-            value="ASELS.IS",
+            value="TSLA",
             help="Örnek: ASELS.IS, THYAO.IS, TSLA, NVDA, BTC-USD, XAGUSD=X"
         )
 
@@ -397,7 +551,7 @@ with tab3:
 
     sembol_metni = st.text_area(
         "Sembolleri alt alta yaz",
-        value="ASELS.IS\nTHYAO.IS\nTSLA\nNVDA\nBTC-USD\nXAGUSD=X"
+        value="TSLA\nNVDA\nAAPL\nMSFT\nBTC-USD\nXAGUSD=X"
     )
 
     semboller = [s.strip() for s in sembol_metni.split("\n") if s.strip()]
