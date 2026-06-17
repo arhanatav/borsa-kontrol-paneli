@@ -385,13 +385,13 @@ def make_single_chart(symbol, df, chart_type, opts):
             x=df.index,open=df["Open"],high=df["High"],low=df["Low"],close=df["Close"],
             name=symbol,
             increasing_line_color=COLORS["green"],decreasing_line_color=COLORS["red"],
-            increasing_fillcolor=COLORS["green"]+"66",decreasing_fillcolor=COLORS["red"]+"66",
+            increasing_fillcolor="rgba(74,222,128,0.4)",decreasing_fillcolor="rgba(248,113,113,0.4)",
         ),row=1,col=1)
     else:
         fig.add_trace(go.Scatter(
             x=df.index,y=df["Close"],mode="lines",name=symbol,
             line=dict(color=COLORS["blue"],width=2),
-            fill="tozeroy",fillcolor=COLORS["blue"]+"18",
+            fill="tozeroy",fillcolor="rgba(56,189,248,0.08)",
         ),row=1,col=1)
 
     ma_cfg=[
@@ -413,7 +413,7 @@ def make_single_chart(symbol, df, chart_type, opts):
             name="BB Üst",line=dict(color=COLORS["gray"],width=1,dash="dot"),showlegend=False),row=1,col=1)
         fig.add_trace(go.Scatter(x=df.index,y=df["BB_LOWER"],mode="lines",
             name="Bollinger",line=dict(color=COLORS["gray"],width=1,dash="dot"),
-            fill="tonexty",fillcolor=COLORS["gray"]+"18"),row=1,col=1)
+            fill="tonexty",fillcolor="rgba(75,85,99,0.1)"),row=1,col=1)
         fig.add_trace(go.Scatter(x=df.index,y=df["BB_MID"],mode="lines",
             name="BB Mid",line=dict(color=COLORS["gray"],width=0.8,dash="dash"),showlegend=False),row=1,col=1)
 
@@ -423,7 +423,7 @@ def make_single_chart(symbol, df, chart_type, opts):
 
     cur=2
     if show_vol:
-        vol_colors=[COLORS["green"]+"88" if c>=o else COLORS["red"]+"88"
+        vol_colors=["rgba(74,222,128,0.5)" if c>=o else "rgba(248,113,113,0.5)"
                     for c,o in zip(df["Close"],df["Open"])]
         fig.add_trace(go.Bar(x=df.index,y=df["Volume"].fillna(0),name="Hacim",
             marker_color=vol_colors,showlegend=False),row=cur,col=1)
@@ -434,12 +434,12 @@ def make_single_chart(symbol, df, chart_type, opts):
             line=dict(color=COLORS["blue"],width=1.6)),row=cur,col=1)
         fig.add_trace(go.Scatter(x=df.index,y=df["RSI9"],mode="lines",name="RSI(9)",
             line=dict(color=COLORS["cyan"],width=1,dash="dot")),row=cur,col=1)
-        for lvl,col in [(70,COLORS["red"]+"88"),(30,COLORS["green"]+"88"),(50,COLORS["gray"]+"55")]:
+        for lvl,col in [(70,"rgba(248,113,113,0.5)"),(30,"rgba(74,222,128,0.5)"),(50,"rgba(75,85,99,0.4)")]:
             fig.add_hline(y=lvl,line_dash="dot",line_color=col,row=cur,col=1)
         fig.update_yaxes(range=[0,100],title_text="RSI",title_font=dict(size=9),row=cur,col=1); cur+=1
 
     if show_macd:
-        hist_colors=[COLORS["green"]+"99" if v>=0 else COLORS["red"]+"99"
+        hist_colors=["rgba(74,222,128,0.6)" if v>=0 else "rgba(248,113,113,0.6)"
                      for v in df["MACD_HIST"].fillna(0)]
         fig.add_trace(go.Bar(x=df.index,y=df["MACD_HIST"],name="Hist",
             marker_color=hist_colors,showlegend=False),row=cur,col=1)
@@ -447,7 +447,7 @@ def make_single_chart(symbol, df, chart_type, opts):
             line=dict(color=COLORS["blue"],width=1.5)),row=cur,col=1)
         fig.add_trace(go.Scatter(x=df.index,y=df["MACD_SIGNAL"],mode="lines",name="Signal",
             line=dict(color=COLORS["orange"],width=1.5)),row=cur,col=1)
-        fig.add_hline(y=0,line_dash="dot",line_color=COLORS["gray"]+"66",row=cur,col=1)
+        fig.add_hline(y=0,line_dash="dot",line_color="rgba(75,85,99,0.5)",row=cur,col=1)
         fig.update_yaxes(title_text="MACD",title_font=dict(size=9),row=cur,col=1); cur+=1
 
     if show_stoch:
@@ -455,14 +455,14 @@ def make_single_chart(symbol, df, chart_type, opts):
             line=dict(color=COLORS["blue"],width=1.5)),row=cur,col=1)
         fig.add_trace(go.Scatter(x=df.index,y=df["STOCH_D"],mode="lines",name="Stoch D",
             line=dict(color=COLORS["orange"],width=1.5,dash="dot")),row=cur,col=1)
-        for lvl,col in [(80,COLORS["red"]+"88"),(20,COLORS["green"]+"88")]:
+        for lvl,col in [(80,"rgba(248,113,113,0.5)"),(20,"rgba(74,222,128,0.5)")]:
             fig.add_hline(y=lvl,line_dash="dot",line_color=col,row=cur,col=1)
         fig.update_yaxes(range=[0,100],title_text="Stoch",title_font=dict(size=9),row=cur,col=1); cur+=1
 
     if show_obv:
         fig.add_trace(go.Scatter(x=df.index,y=df["OBV"],mode="lines",name="OBV",
             line=dict(color=COLORS["purple"],width=1.5),
-            fill="tozeroy",fillcolor=COLORS["purple"]+"18"),row=cur,col=1)
+            fill="tozeroy",fillcolor="rgba(129,140,248,0.1)"),row=cur,col=1)
         fig.update_yaxes(title_text="OBV",title_font=dict(size=9),row=cur,col=1); cur+=1
 
     fig.update_layout(
@@ -504,7 +504,7 @@ def make_compare_chart(price_dict):
         fig.add_trace(go.Scatter(x=normed.index,y=normed[col],mode="lines",name=col,
             line=dict(color=color,width=2.2),
             hovertemplate=f"<b>{col}</b>: %{{y:.1f}}<extra></extra>"))
-    fig.add_hline(y=100,line_dash="dot",line_color=COLORS["gray"]+"88")
+    fig.add_hline(y=100,line_dash="dot",line_color="rgba(75,85,99,0.5)")
     fig.update_layout(
         height=500, hovermode="x unified",
         title=dict(text="<b>Karşılaştırmalı Performans</b> — Başlangıç = 100",font=dict(size=15,color="#f1f5f9")),
@@ -555,7 +555,7 @@ def make_risk_return_scatter(df):
         marker=dict(size=12,color=colors,line=dict(color="#0d1117",width=1.5)),
         hovertemplate="<b>%{text}</b><br>Volatilite: %{x:.1f}%<br>Getiri: %{y:.1f}%<extra></extra>",
     ))
-    fig.add_hline(y=0,line_dash="dot",line_color=COLORS["gray"]+"88")
+    fig.add_hline(y=0,line_dash="dot",line_color="rgba(75,85,99,0.5)")
     fig.update_layout(
         height=420,
         title=dict(text="<b>Risk / Getiri Dağılımı</b>",font=dict(size=14,color="#f1f5f9")),
@@ -757,7 +757,7 @@ with tab5:
     ret_series = prices[hist_sym]["Close"].pct_change().dropna()*100
     fig_hist = go.Figure(go.Histogram(
         x=ret_series,nbinsx=80,name="Günlük Getiri",
-        marker_color=COLORS["blue"]+"99",marker_line=dict(color=COLORS["blue"],width=0.5)))
+        marker_color="rgba(56,189,248,0.6)",marker_line=dict(color=COLORS["blue"],width=0.5)))
     fig_hist.add_vline(x=float(ret_series.mean()),line_dash="dash",line_color=COLORS["green"],
         annotation_text=f"Ort: {ret_series.mean():.2f}%",annotation_font_color=COLORS["green"])
     fig_hist.update_layout(
