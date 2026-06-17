@@ -1,10 +1,12 @@
 import re
 import math
+from io import StringIO
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
@@ -15,8 +17,8 @@ from plotly.subplots import make_subplots
 # ============================================================
 
 st.set_page_config(
-    page_title="S&P 500 Hisse Grafiği",
-    page_icon="📈",
+    page_title="S&P 500 Tek Hisse Grafik Paneli",
+    page_icon="📊",
     layout="wide",
 )
 
@@ -24,9 +26,22 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        .block-container {padding-top: 1.2rem; padding-bottom: 2.2rem;}
-        .main-title {font-size: 2.1rem; font-weight: 850; margin-bottom: .15rem;}
-        .subtle {color: #6b7280; font-size: .95rem; margin-bottom: 1rem;}
+        .block-container {
+            padding-top: 1.2rem;
+            padding-bottom: 2.4rem;
+        }
+
+        .main-title {
+            font-size: 2.1rem;
+            font-weight: 850;
+            margin-bottom: .15rem;
+        }
+
+        .subtle {
+            color: #6b7280;
+            font-size: .95rem;
+            margin-bottom: 1rem;
+        }
 
         div[data-testid="stMetric"] {
             background: #ffffff;
@@ -37,19 +52,19 @@ st.markdown(
         }
 
         div[data-testid="stPlotlyChart"] {
-            margin-top: 1.1rem;
-            margin-bottom: 2.2rem;
+            margin-top: 1rem;
+            margin-bottom: 2.4rem;
+        }
+
+        h3 {
+            margin-top: 2rem !important;
+            margin-bottom: 1rem !important;
         }
 
         .small-info {
             color: #6b7280;
             font-size: 0.88rem;
             line-height: 1.35;
-        }
-
-        h3 {
-            margin-top: 2rem !important;
-            margin-bottom: 1rem !important;
         }
 
         .stTabs [data-baseweb="tab-panel"] {
@@ -62,7 +77,7 @@ st.markdown(
 
 
 # ============================================================
-# SABİTLER
+# AYARLAR
 # ============================================================
 
 PERIODS = {
@@ -78,7 +93,6 @@ PERIODS = {
     "Tüm Zamanlar": "max",
 }
 
-
 INTERVALS = {
     "Günlük": "1d",
     "Haftalık": "1wk",
@@ -86,23 +100,76 @@ INTERVALS = {
 }
 
 
-FUNDAMENTAL_LIMIT = 1
+LOCAL_SP500_FALLBACK = [
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA", "BRK-B",
+    "LLY", "AVGO", "JPM", "V", "MA", "UNH", "XOM", "COST", "WMT", "HD", "PG",
+    "NFLX", "JNJ", "ORCL", "ABBV", "BAC", "KO", "CVX", "MRK", "AMD", "PEP",
+    "ADBE", "CRM", "TMO", "MCD", "CSCO", "ABT", "WFC", "ACN", "DHR", "LIN",
+    "INTU", "TXN", "QCOM", "IBM", "GE", "AMGN", "CAT", "PM", "NOW", "ISRG",
+    "VZ", "NEE", "DIS", "RTX", "UBER", "PFE", "AMAT", "GS", "AXP", "SPGI",
+    "PGR", "UNP", "LOW", "BKNG", "HON", "T", "ETN", "BLK", "MS", "TJX",
+    "SYK", "LMT", "VRTX", "ELV", "C", "MDT", "ADI", "BSX", "CB", "MMC",
+    "ADP", "PANW", "GILD", "REGN", "MU", "PLD", "DE", "SBUX", "KLAC", "UPS",
+    "AMT", "CI", "MDLZ", "BMY", "SO", "FI", "NKE", "SCHW", "DUK", "ICE",
+    "MO", "INTC", "ZTS", "SHW", "EQIX", "CL", "TT", "WM", "APH", "MCK",
+    "CVS", "CME", "PH", "CDNS", "TDG", "CMG", "EOG", "AON", "GD", "MSI",
+    "WELL", "MMM", "ITW", "USB", "PNC", "TGT", "MCO", "HCA", "SNPS", "ORLY",
+    "APD", "BDX", "MAR", "AJG", "NOC", "EMR", "FDX", "CSX", "ROP", "ECL",
+    "FCX", "NXPI", "COF", "ADSK", "PSX", "SLB", "GM", "HLT", "AFL", "TRV",
+    "TFC", "NSC", "OKE", "PCAR", "CARR", "AZO", "O", "SRE", "SPG", "DHI",
+    "JCI", "MET", "BK", "AEP", "ROST", "KMB", "DLR", "F", "PSA", "NEM",
+    "ALL", "CPRT", "GWW", "VLO", "AMP", "PAYX", "URI", "CMI", "MNST", "LHX",
+    "MPC", "KMI", "AIG", "PWR", "COR", "MSCI", "FIS", "FICO", "FAST", "OXY",
+    "RSG", "LEN", "KDP", "TEL", "A", "KVUE", "PCG", "CTAS", "PRU", "HUM",
+    "CCI", "EW", "HES", "AME", "IDXX", "D", "STZ", "YUM", "IQV", "EXC",
+    "VRSK", "OTIS", "GEV", "IR", "CTSH", "ODFL", "SYY", "VMC", "ACGL",
+    "BKR", "KR", "GIS", "EA", "IT", "XEL", "LULU", "DFS", "DD", "EXR",
+    "MLM", "RCL", "CTVA", "ED", "DAL", "NUE", "HPQ", "WAB", "EFX", "HIG",
+    "ON", "EIX", "XYL", "VICI", "MTD", "GLW", "TSCO", "EBAY", "AVB", "PPG",
+    "ROK", "CDW", "WEC", "MPWR", "GRMN", "ANSS", "FITB", "WTW", "KEYS",
+    "BIIB", "CAH", "FTV", "EQR", "FANG", "RMD", "WBD", "DOV", "GPN", "AWK",
+    "MTB", "LYB", "CHTR", "PHM", "BR", "WST", "HPE", "TTWO", "STT", "DTE",
+    "NTAP", "SBAC", "TROW", "IFF", "ZBH", "CHD", "WAT", "APTV", "VLTO",
+    "STE", "PPL", "WY", "ETR", "HBAN", "TRGP", "NVR", "FE", "BRO", "ES",
+    "DECK", "CBOE", "HUBB", "BALL", "TYL", "BLDR", "AEE", "TER", "PTC",
+    "CINF", "MKC", "LDOS", "RF", "STX", "INVH", "CMS", "PODD", "ARE",
+    "GDDY", "ATO", "CLX", "TDY", "DRI", "COO", "CNP", "EQT", "HOLX", "WDC",
+    "MOH", "UAL", "LUV", "SYF", "EXPE", "OMC", "BAX", "PKG", "CFG", "K",
+    "J", "MAA", "LH", "ESS", "TXT", "FSLR", "MAS", "VTR", "IEX", "AVY",
+    "ALGN", "DGX", "BBY", "NRG", "NDAQ", "TSN", "WRB", "LVS", "SWKS",
+    "EXPD", "FDS", "AMCR", "CF", "GEN", "MRO", "CAG", "LNT", "IP", "AKAM",
+    "SWK", "POOL", "KEY", "KIM", "DOC", "ROL", "TRMB", "SNA", "PNR", "DPZ",
+    "JBHT", "EVRG", "VRSN", "UDR", "EG", "ZBRA", "HST", "NI", "JKHY", "AES",
+    "LKQ", "KMX", "EMN", "JNPR", "NDSN", "IPG", "ALLE", "INCY", "UHS",
+    "CRL", "REG", "AIZ", "EPAM", "FFIV", "TECH", "CTRA", "BXP", "TAP",
+    "TFX", "TPR", "HRL", "CHRW", "PAYC", "AOS", "CPB", "FOXA", "FOX",
+    "CPT", "NWSA", "NWS", "QRVO", "MOS", "MKTX", "PNW", "APA", "HSIC",
+    "FRT", "BWA", "WYNN", "HAS", "MTCH", "GL", "DAY", "RVTY", "GNRC",
+    "BF-B", "MGM", "LW", "DVA", "AAL", "IVZ", "CZR", "PARA"
+]
 
 
 # ============================================================
 # YARDIMCI FONKSİYONLAR
 # ============================================================
 
+def normalize_symbol(symbol: str) -> str:
+    if not symbol:
+        return ""
+    return symbol.strip().upper().replace(".", "-")
+
+
 def clean_symbols(values: Iterable[str]) -> List[str]:
-    cleaned: List[str] = []
+    cleaned = []
 
     for value in values:
         if not value:
             continue
 
         parts = re.split(r"[\s,;]+", str(value))
+
         for part in parts:
-            symbol = part.strip().upper()
+            symbol = normalize_symbol(part)
             if symbol:
                 cleaned.append(symbol)
 
@@ -156,7 +223,14 @@ def standardize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
 
+    if isinstance(df.columns, pd.MultiIndex):
+        try:
+            df.columns = df.columns.get_level_values(-1)
+        except Exception:
+            pass
+
     rename_map = {}
+
     for col in df.columns:
         col_str = str(col).strip()
         lower = col_str.lower()
@@ -203,73 +277,124 @@ def standardize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
 # ============================================================
 
 @st.cache_data(ttl=21600, show_spinner=False)
-def load_sp500_table() -> Tuple[pd.DataFrame, bool]:
-    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+def load_sp500_table() -> Tuple[pd.DataFrame, str]:
+    sources = [
+        "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/master/data/constituents.csv",
+        "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv",
+    ]
+
+    for url in sources:
+        try:
+            df = pd.read_csv(url)
+
+            symbol_col = None
+            name_col = None
+            sector_col = None
+
+            for col in df.columns:
+                c = str(col).lower()
+                if c in ["symbol", "ticker"]:
+                    symbol_col = col
+                elif c in ["name", "security"]:
+                    name_col = col
+                elif "sector" in c:
+                    sector_col = col
+
+            if symbol_col is None:
+                continue
+
+            out = pd.DataFrame()
+            out["Symbol"] = df[symbol_col].astype(str).map(normalize_symbol)
+            out["Security"] = df[name_col].astype(str) if name_col else out["Symbol"]
+            out["Sector"] = df[sector_col].astype(str) if sector_col else "-"
+            out["Sub Industry"] = "-"
+
+            out = out.dropna(subset=["Symbol"])
+            out = out[out["Symbol"] != ""]
+            out = out.drop_duplicates(subset=["Symbol"])
+            out = out.sort_values("Symbol").reset_index(drop=True)
+
+            if len(out) > 400:
+                return out, "online_csv"
+
+        except Exception:
+            pass
 
     try:
-        tables = pd.read_html(url, attrs={"id": "constituents"})
+        url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 
-        if not tables:
-            tables = pd.read_html(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+
+        response = requests.get(url, headers=headers, timeout=20)
+        response.raise_for_status()
+
+        tables = pd.read_html(StringIO(response.text), match="Symbol")
 
         df = tables[0].copy()
 
         needed_cols = ["Symbol", "Security", "GICS Sector", "GICS Sub-Industry"]
+
         for col in needed_cols:
             if col not in df.columns:
                 df[col] = "-"
 
-        df = df[needed_cols].copy()
+        out = pd.DataFrame()
+        out["Symbol"] = df["Symbol"].astype(str).map(normalize_symbol)
+        out["Security"] = df["Security"].astype(str)
+        out["Sector"] = df["GICS Sector"].astype(str)
+        out["Sub Industry"] = df["GICS Sub-Industry"].astype(str)
 
-        # Wikipedia sembolü BRK.B gibi gelebilir.
-        # Yahoo Finance/yfinance tarafında BRK-B formatı kullanılır.
-        df["Yahoo Symbol"] = (
-            df["Symbol"]
-            .astype(str)
-            .str.strip()
-            .str.upper()
-            .str.replace(".", "-", regex=False)
-        )
+        out = out.dropna(subset=["Symbol"])
+        out = out[out["Symbol"] != ""]
+        out = out.drop_duplicates(subset=["Symbol"])
+        out = out.sort_values("Symbol").reset_index(drop=True)
 
-        df["Security"] = df["Security"].astype(str)
-        df["GICS Sector"] = df["GICS Sector"].astype(str)
-        df["GICS Sub-Industry"] = df["GICS Sub-Industry"].astype(str)
-
-        df = df.sort_values("Yahoo Symbol").reset_index(drop=True)
-
-        return df, True
+        if len(out) > 400:
+            return out, "wikipedia"
 
     except Exception:
-        fallback = pd.DataFrame(
-            [
-                {"Symbol": "AAPL", "Security": "Apple Inc.", "GICS Sector": "Information Technology", "GICS Sub-Industry": "-"},
-                {"Symbol": "MSFT", "Security": "Microsoft Corp.", "GICS Sector": "Information Technology", "GICS Sub-Industry": "-"},
-                {"Symbol": "NVDA", "Security": "NVIDIA Corp.", "GICS Sector": "Information Technology", "GICS Sub-Industry": "-"},
-                {"Symbol": "AMZN", "Security": "Amazon.com Inc.", "GICS Sector": "Consumer Discretionary", "GICS Sub-Industry": "-"},
-                {"Symbol": "GOOGL", "Security": "Alphabet Inc. Class A", "GICS Sector": "Communication Services", "GICS Sub-Industry": "-"},
-                {"Symbol": "META", "Security": "Meta Platforms Inc.", "GICS Sector": "Communication Services", "GICS Sub-Industry": "-"},
-                {"Symbol": "TSLA", "Security": "Tesla Inc.", "GICS Sector": "Consumer Discretionary", "GICS Sub-Industry": "-"},
-                {"Symbol": "BRK-B", "Security": "Berkshire Hathaway Inc.", "GICS Sector": "Financials", "GICS Sub-Industry": "-"},
-                {"Symbol": "JPM", "Security": "JPMorgan Chase & Co.", "GICS Sector": "Financials", "GICS Sub-Industry": "-"},
-                {"Symbol": "LLY", "Security": "Eli Lilly and Co.", "GICS Sector": "Health Care", "GICS Sub-Industry": "-"},
-            ]
-        )
+        pass
 
-        fallback["Yahoo Symbol"] = fallback["Symbol"]
+    fallback_df = pd.DataFrame(
+        {
+            "Symbol": LOCAL_SP500_FALLBACK,
+            "Security": LOCAL_SP500_FALLBACK,
+            "Sector": "-",
+            "Sub Industry": "-",
+        }
+    )
 
-        return fallback, False
+    fallback_df = fallback_df.drop_duplicates(subset=["Symbol"])
+    fallback_df = fallback_df.sort_values("Symbol").reset_index(drop=True)
+
+    return fallback_df, "local_fallback"
 
 
 # ============================================================
-# VERİ FONKSİYONLARI
+# FİYAT VERİSİ
 # ============================================================
 
 @st.cache_data(ttl=900, show_spinner=False)
 def download_price(symbol: str, period: str, interval: str) -> pd.DataFrame:
-    symbol = symbol.strip().upper()
+    symbol = normalize_symbol(symbol)
 
     if not symbol:
         return pd.DataFrame()
+
+    attempts = []
+
+    try:
+        raw = yf.Ticker(symbol).history(
+            period=period,
+            interval=interval,
+            auto_adjust=True,
+            actions=False,
+        )
+        attempts.append(raw)
+    except Exception:
+        pass
 
     try:
         raw = yf.download(
@@ -277,40 +402,61 @@ def download_price(symbol: str, period: str, interval: str) -> pd.DataFrame:
             period=period,
             interval=interval,
             auto_adjust=True,
-            group_by="ticker",
             progress=False,
             threads=False,
             actions=False,
             timeout=30,
         )
+        attempts.append(raw)
     except Exception:
-        return pd.DataFrame()
+        pass
 
-    if raw is None or raw.empty:
-        return pd.DataFrame()
+    if period == "max":
+        try:
+            raw = yf.download(
+                tickers=symbol,
+                start="1900-01-01",
+                interval=interval,
+                auto_adjust=True,
+                progress=False,
+                threads=False,
+                actions=False,
+                timeout=30,
+            )
+            attempts.append(raw)
+        except Exception:
+            pass
 
-    if isinstance(raw.columns, pd.MultiIndex):
-        level0 = list(raw.columns.get_level_values(0).unique())
-        level1 = list(raw.columns.get_level_values(1).unique())
+    try:
+        raw = yf.download(
+            tickers=symbol,
+            period="10y",
+            interval="1d",
+            auto_adjust=True,
+            progress=False,
+            threads=False,
+            actions=False,
+            timeout=30,
+        )
+        attempts.append(raw)
+    except Exception:
+        pass
 
-        if symbol in level0:
-            df = raw[symbol].copy()
-        elif symbol in level1:
-            df = raw.xs(symbol, level=1, axis=1).copy()
-        else:
-            try:
-                df = raw.droplevel(0, axis=1).copy()
-            except Exception:
-                df = raw.copy()
-    else:
-        df = raw.copy()
+    for raw in attempts:
+        if raw is None or raw.empty:
+            continue
 
-    return standardize_ohlcv(df)
+        df = standardize_ohlcv(raw)
+
+        if not df.empty and "Close" in df.columns:
+            return df
+
+    return pd.DataFrame()
 
 
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_fundamentals(symbol: str) -> pd.DataFrame:
-    symbol = symbol.strip().upper()
+    symbol = normalize_symbol(symbol)
 
     try:
         info = yf.Ticker(symbol).get_info() or {}
@@ -346,13 +492,13 @@ def fetch_fundamentals(symbol: str) -> pd.DataFrame:
 
 
 # ============================================================
-# TEKNİK ANALİZ FONKSİYONLARI
+# TEKNİK ANALİZ
 # ============================================================
 
 def calc_rsi(close: pd.Series, period: int = 14) -> pd.Series:
     close = close.astype(float)
-    delta = close.diff()
 
+    delta = close.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
 
@@ -492,7 +638,7 @@ def position_sizing(
 
 
 # ============================================================
-# GRAFİK FONKSİYONU
+# GRAFİK
 # ============================================================
 
 def make_single_chart(
@@ -510,6 +656,7 @@ def make_single_chart(
     df = add_indicators(df)
 
     rows = 1 + int(show_volume) + int(show_rsi)
+
     row_heights = [0.68]
 
     if show_volume:
@@ -585,6 +732,7 @@ def make_single_chart(
             row=1,
             col=1,
         )
+
         fig.add_trace(
             go.Scatter(
                 x=df.index,
@@ -607,6 +755,7 @@ def make_single_chart(
             "rgba(22,163,74,.35)",
             "rgba(220,38,38,.35)",
         )
+
         fig.add_trace(
             go.Bar(
                 x=df.index,
@@ -617,6 +766,7 @@ def make_single_chart(
             row=current_row,
             col=1,
         )
+
         fig.update_yaxes(title_text="Hacim", row=current_row, col=1)
         current_row += 1
 
@@ -632,6 +782,7 @@ def make_single_chart(
             row=current_row,
             col=1,
         )
+
         fig.add_hline(y=70, line_dash="dot", opacity=0.45, row=current_row, col=1)
         fig.add_hline(y=30, line_dash="dot", opacity=0.45, row=current_row, col=1)
         fig.update_yaxes(title_text="RSI", range=[0, 100], row=current_row, col=1)
@@ -690,26 +841,23 @@ def make_single_chart(
 # BAŞLIK
 # ============================================================
 
-st.markdown('<div class="main-title">📊 S&P 500 Tek Hisse Grafik Paneli</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="subtle">Sembol yaz, sadece o hissenin grafiği çıksın. Eğitim ve kişisel takip amaçlıdır; al-sat tavsiyesi değildir.</div>',
+    '<div class="main-title">📊 S&P 500 Tek Hisse Grafik Paneli</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    '<div class="subtle">Sembol yaz veya S&P 500 listesinden seç. Sadece tek hissenin grafiği gösterilir. Eğitim amaçlıdır; al-sat tavsiyesi değildir.</div>',
     unsafe_allow_html=True,
 )
 
 
 # ============================================================
-# S&P 500 VERİSİ
+# S&P 500 LİSTESİ
 # ============================================================
 
-sp500_df, sp500_ok = load_sp500_table()
-
-if not sp500_ok:
-    st.warning(
-        "S&P 500 listesi internetten alınamadı. Geçici olarak sınırlı yedek liste kullanılıyor. "
-        "requirements.txt içinde lxml olduğundan emin ol."
-    )
-
-sp500_symbols = set(sp500_df["Yahoo Symbol"].astype(str).str.upper().tolist())
+sp500_df, sp500_source = load_sp500_table()
+sp500_symbols = set(sp500_df["Symbol"].astype(str).map(normalize_symbol).tolist())
 
 
 # ============================================================
@@ -730,31 +878,37 @@ with st.sidebar:
             "Sembol",
             value="AAPL",
             placeholder="Örn: AAPL, MSFT, NVDA, TSLA, BRK-B",
-            help="S&P 500 sembolü yaz. BRK.B yerine BRK-B yaz.",
+            help="Berkshire için BRK.B değil BRK-B yaz.",
         )
 
         cleaned = clean_symbols([symbol_text])
         symbol = cleaned[0] if cleaned else ""
 
     else:
-        options = []
-        symbol_lookup = {}
+        option_labels = []
+        option_to_symbol = {}
 
         for _, row in sp500_df.iterrows():
-            yahoo_symbol = str(row["Yahoo Symbol"]).upper()
-            label = f"{yahoo_symbol} — {row['Security']}"
-            options.append(label)
-            symbol_lookup[label] = yahoo_symbol
+            symbol_item = normalize_symbol(row["Symbol"])
+            company = str(row["Security"])
+            sector = str(row["Sector"])
 
-        default_label = next((x for x in options if x.startswith("AAPL")), options[0])
+            label = f"{symbol_item} — {company} — {sector}"
+            option_labels.append(label)
+            option_to_symbol[label] = symbol_item
+
+        default_label = next(
+            (label for label in option_labels if label.startswith("AAPL")),
+            option_labels[0],
+        )
 
         selected_label = st.selectbox(
             "S&P 500 hissesi",
-            options=options,
-            index=options.index(default_label),
+            options=option_labels,
+            index=option_labels.index(default_label),
         )
 
-        symbol = symbol_lookup[selected_label]
+        symbol = option_to_symbol[selected_label]
 
     period_label = st.selectbox(
         "Veri aralığı",
@@ -771,7 +925,13 @@ with st.sidebar:
     st.divider()
     st.subheader("Gösterge Ayarları")
 
-    chart_type_option = st.radio("Grafik tipi", ["Mum", "Çizgi"], index=0, horizontal=True)
+    chart_type_option = st.radio(
+        "Grafik tipi",
+        ["Mum", "Çizgi"],
+        index=0,
+        horizontal=True,
+    )
+
     show_sma20 = st.checkbox("SMA20", value=True)
     show_sma50 = st.checkbox("SMA50", value=True)
     show_sma200 = st.checkbox("SMA200", value=True)
@@ -781,11 +941,17 @@ with st.sidebar:
     show_rsi = st.checkbox("RSI", value=True)
 
     st.divider()
+
+    if st.button("Veriyi yenile / cache temizle"):
+        st.cache_data.clear()
+        st.rerun()
+
     st.markdown(
-        """
+        f"""
         <div class="small-info">
-        Bu sürümde karşılaştırmalı grafik kaldırıldı.  
-        Sadece yazdığın veya seçtiğin tek sembol indirilir.
+        S&P 500 liste kaynağı: <b>{sp500_source}</b><br>
+        Yüklenen sembol sayısı: <b>{len(sp500_df)}</b><br><br>
+        Bu sürümde karşılaştırmalı grafik yoktur. Sadece seçilen tek sembol indirilir.
         </div>
         """,
         unsafe_allow_html=True,
@@ -793,44 +959,42 @@ with st.sidebar:
 
 
 # ============================================================
-# SEMBOL KONTROLÜ
+# SEMBOL KONTROL
 # ============================================================
+
+symbol = normalize_symbol(symbol)
 
 if not symbol:
     st.warning("Başlamak için bir sembol yaz.")
     st.stop()
 
-symbol = symbol.upper().replace(".", "-")
-
 if symbol not in sp500_symbols:
     st.info(
         f"{symbol} mevcut S&P 500 listesinde görünmüyor. "
-        "Yine de yfinance üzerinden veri deneniyor. S&P 500 için örnek: AAPL, MSFT, NVDA, BRK-B."
+        "Yine de yfinance üzerinden veri deneniyor. Örnek semboller: AAPL, MSFT, NVDA, TSLA, BRK-B."
     )
-
 
 period = PERIODS[period_label]
 interval = INTERVALS[interval_label]
 
 
 # ============================================================
-# FİYAT VERİSİ
+# VERİ ÇEK
 # ============================================================
 
-with st.spinner(f"{symbol} verisi alınıyor... ({period_label}, {interval_label})"):
+with st.spinner(f"{symbol} verisi alınıyor..."):
     price_df = download_price(symbol, period, interval)
-
 
 if price_df.empty:
     st.error(
         f"{symbol} için veri alınamadı. Sembolü kontrol et. "
-        "Örnek: BRK.B yerine BRK-B yazmalısın."
+        "Berkshire için BRK.B değil BRK-B yaz. Sorun devam ederse Veriyi yenile / cache temizle butonuna bas."
     )
     st.stop()
 
 
 # ============================================================
-# ÖZET METRİKLER
+# METRİKLER
 # ============================================================
 
 metrics = metrics_for_symbol(symbol, price_df)
@@ -868,16 +1032,16 @@ with tab1:
 
     st.plotly_chart(
         make_single_chart(
-            symbol,
-            price_df,
-            chart_type_option,
-            show_sma20,
-            show_sma50,
-            show_sma200,
-            show_ema21,
-            show_bb,
-            show_volume,
-            show_rsi,
+            symbol=symbol,
+            df=price_df,
+            chart_type=chart_type_option,
+            show_sma20=show_sma20,
+            show_sma50=show_sma50,
+            show_sma200=show_sma200,
+            show_ema21=show_ema21,
+            show_bb=show_bb,
+            show_volume=show_volume,
+            show_rsi=show_rsi,
         ),
         use_container_width=True,
         theme="streamlit",
@@ -908,7 +1072,7 @@ with tab2:
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
     st.caption(
-        "Teknik skor basit bir takip filtresidir: Close>SMA20, SMA20>SMA50, RSI dengesi, Close>EMA21 ve Close>SMA200 koşullarından puan toplar."
+        "Teknik skor basit bir filtredir: Close>SMA20, SMA20>SMA50, RSI dengesi, Close>EMA21 ve Close>SMA200 koşullarından puan toplar."
     )
 
 
@@ -916,12 +1080,12 @@ with tab3:
     st.markdown("### Temel Analiz Tablosu")
 
     with st.spinner("Temel veriler alınıyor..."):
-        fundamentals = fetch_fundamentals(symbol)
+        fundamentals_df = fetch_fundamentals(symbol)
 
-    st.dataframe(fundamentals, use_container_width=True, hide_index=True)
+    st.dataframe(fundamentals_df, use_container_width=True, hide_index=True)
 
     st.caption(
-        "Bazı sembollerde temel veri eksik gelebilir. Bu durum veri sağlayıcısından kaynaklanır."
+        "Bazı sembollerde temel veri eksik gelebilir. Bu veri sağlayıcıdan kaynaklanır."
     )
 
 
@@ -933,18 +1097,53 @@ with tab4:
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        capital = st.number_input("Toplam Sermaye", min_value=0.0, value=100000.0, step=1000.0)
-        risk_pct = st.number_input("İşlem Başı Risk %", min_value=0.1, max_value=100.0, value=2.0, step=0.1)
+        capital = st.number_input(
+            "Toplam Sermaye",
+            min_value=0.0,
+            value=100000.0,
+            step=1000.0,
+        )
+
+        risk_pct = st.number_input(
+            "İşlem Başı Risk %",
+            min_value=0.1,
+            max_value=100.0,
+            value=2.0,
+            step=0.1,
+        )
 
     with c2:
-        entry = st.number_input("Giriş Fiyatı", min_value=0.0, value=round(last_price, 2), step=1.0)
-        stop = st.number_input("Stop Fiyatı", min_value=0.0, value=round(last_price * 0.95, 2), step=1.0)
+        entry = st.number_input(
+            "Giriş Fiyatı",
+            min_value=0.0,
+            value=round(last_price, 2),
+            step=1.0,
+        )
+
+        stop = st.number_input(
+            "Stop Fiyatı",
+            min_value=0.0,
+            value=round(last_price * 0.95, 2),
+            step=1.0,
+        )
 
     with c3:
-        target = st.number_input("Hedef Fiyat", min_value=0.0, value=round(last_price * 1.15, 2), step=1.0)
+        target = st.number_input(
+            "Hedef Fiyat",
+            min_value=0.0,
+            value=round(last_price * 1.15, 2),
+            step=1.0,
+        )
+
         st.write("")
 
-    result = position_sizing(capital, risk_pct, entry, stop, target)
+    result = position_sizing(
+        capital=capital,
+        risk_pct=risk_pct,
+        entry=entry,
+        stop=stop,
+        target=target,
+    )
 
     if result is None:
         st.error("Stop fiyatı giriş fiyatına eşit olamaz.")
@@ -960,6 +1159,7 @@ with tab4:
         st.dataframe(show_result, use_container_width=True, hide_index=True)
 
         rr = result["Risk/Getiri"]
+
         if rr < 1.5:
             st.warning("Risk/getiri oranı düşük görünüyor.")
         else:
@@ -981,26 +1181,24 @@ with tab5:
         q = search_text.strip().lower()
 
         mask = (
-            list_df["Yahoo Symbol"].astype(str).str.lower().str.contains(q, na=False)
+            list_df["Symbol"].astype(str).str.lower().str.contains(q, na=False)
             | list_df["Security"].astype(str).str.lower().str.contains(q, na=False)
-            | list_df["GICS Sector"].astype(str).str.lower().str.contains(q, na=False)
-            | list_df["GICS Sub-Industry"].astype(str).str.lower().str.contains(q, na=False)
+            | list_df["Sector"].astype(str).str.lower().str.contains(q, na=False)
+            | list_df["Sub Industry"].astype(str).str.lower().str.contains(q, na=False)
         )
 
         list_df = list_df[mask].copy()
 
-    show_sp500 = list_df[
-        ["Yahoo Symbol", "Security", "GICS Sector", "GICS Sub-Industry"]
-    ].rename(
+    show_df = list_df.rename(
         columns={
-            "Yahoo Symbol": "Yahoo Sembol",
+            "Symbol": "Sembol",
             "Security": "Şirket",
-            "GICS Sector": "Sektör",
-            "GICS Sub-Industry": "Alt Sektör",
+            "Sector": "Sektör",
+            "Sub Industry": "Alt Sektör",
         }
     )
 
-    st.dataframe(show_sp500, use_container_width=True, hide_index=True)
+    st.dataframe(show_df, use_container_width=True, hide_index=True)
 
     st.info(
         "Sembol yazarken Yahoo Finance formatı kullanılır. "
