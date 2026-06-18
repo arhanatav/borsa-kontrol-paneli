@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
+from datetime import datetime, timedelta
 
 st.set_page_config(
     page_title="Borsa & Kripto Pro Panel",
@@ -50,6 +51,7 @@ PRESETS = {
         "NVDA","AMD","INTC","AVGO","QCOM","ARM","SMCI","MRVL","AMAT","KLAC",
         "LRCX","ASML","TSM","MU","MSFT","GOOGL","META","PLTR","AI","SNOW",
         "NET","CRWD","PANW","ZS","DDOG","GTLB","CFLT","VRT","DELL","HPE",
+        "ADI","ON","MCHP","TER","WDC","STX","ANET","NXPI","SWKS","QRVO",
     ],
     "📱 Mega Tech FAANG+": [
         "META","AAPL","AMZN","NFLX","GOOGL","MSFT","TSLA","NVDA",
@@ -88,22 +90,47 @@ PRESETS = {
         "META","GOOGL","NFLX","DIS","CMCSA","T","VZ","CHTR","TMUS","DISH",
         "WBD","PARA","FOXA","NYT","IAC","ZM","TWLO","BAND","LUMN","LBRDA",
     ],
+    "🇹🇷 BIST 100 (Tüm Liste)": [
+        "AEFES.IS","AGHOL.IS","AKBNK.IS","AKSA.IS","AKSEN.IS","ALARK.IS","ALTNY.IS","ANSGR.IS",
+        "ARCLK.IS","ASELS.IS","ASTOR.IS","BALSU.IS","BIMAS.IS","BRSAN.IS","BRYAT.IS","BSOKE.IS",
+        "BTCIM.IS","CANTE.IS","CCOLA.IS","CIMSA.IS","CVKMD.IS","CWENE.IS","DAPGM.IS","DOAS.IS",
+        "DOHOL.IS","DSTKF.IS","ECILC.IS","EFOR.IS","EKGYO.IS","ENERY.IS","ENJSA.IS","ENKAI.IS",
+        "EREGL.IS","EUPWR.IS","EUREN.IS","FENER.IS","FROTO.IS","GARAN.IS","GENIL.IS","GESAN.IS",
+        "GLRMK.IS","GRSEL.IS","GRTHO.IS","GSRAY.IS","GUBRF.IS","HALKB.IS","HEKTS.IS","ISCTR.IS",
+        "ISMEN.IS","IZENR.IS","KCHOL.IS","KLRHO.IS","KONTR.IS","KRDMD.IS","KTLEV.IS","KUYAS.IS",
+        "MAGEN.IS","MAVI.IS","MGROS.IS","MIATK.IS","MPARK.IS","OBAMS.IS","ODAS.IS","OTKAR.IS",
+        "OYAKC.IS","PAHOL.IS","PASEU.IS","PATEK.IS","PETKM.IS","PGSUS.IS","PSGYO.IS","QUAGR.IS",
+        "RALYH.IS","REEDR.IS","SAHOL.IS","SARKY.IS","SASA.IS","SISE.IS","SKBNK.IS","SOKM.IS",
+        "TABGD.IS","TAVHL.IS","TCELL.IS","THYAO.IS","TKFEN.IS","TOASO.IS","TRALT.IS","TRENJ.IS",
+        "TRMET.IS","TSKB.IS","TTKOM.IS","TUKAS.IS","TUPRS.IS","TUREX.IS","TURSG.IS","ULKER.IS",
+        "VAKBN.IS","VESTL.IS","YKBNK.IS","ZOREN.IS",
+    ],
     "🇹🇷 BIST Seçkinler": [
         "THYAO.IS","ASELS.IS","KCHOL.IS","GARAN.IS","EREGL.IS","BIMAS.IS",
         "TUPRS.IS","SISE.IS","SAHOL.IS","TOASO.IS","ARCLK.IS","FROTO.IS",
         "VESTL.IS","AKBNK.IS","YKBNK.IS","ISCTR.IS","HALKB.IS","VAKBN.IS",
         "TCELL.IS","TTKOM.IS","SODA.IS","BRISA.IS","DOHOL.IS","ENKAI.IS",
+        "PGSUS.IS","ASTOR.IS","CCOLA.IS","AEFES.IS","MGROS.IS","ULKER.IS",
+        "PETKM.IS","TKFEN.IS","OTKAR.IS","GUBRF.IS","KRDMD.IS","SASA.IS",
+        "CIMSA.IS","EKGYO.IS","MAVI.IS","AKSA.IS","BRSAN.IS","AGHOL.IS",
+        "TSKB.IS","SKBNK.IS","ENJSA.IS","AKSEN.IS","TAVHL.IS","HEKTS.IS",
+        "KONTR.IS","ODAS.IS","ZOREN.IS","DOAS.IS",
     ],
     "🇹🇷 BIST Bankacılık": [
-        "GARAN.IS","AKBNK.IS","YKBNK.IS","ISCTR.IS","HALKB.IS","VAKBN.IS","QNBFB.IS","ALBRK.IS",
+        "GARAN.IS","AKBNK.IS","YKBNK.IS","ISCTR.IS","HALKB.IS","VAKBN.IS",
+        "TSKB.IS","SKBNK.IS","QNBFB.IS","ALBRK.IS",
     ],
     "🇹🇷 BIST Sanayi & Holding": [
         "EREGL.IS","TUPRS.IS","ARCLK.IS","FROTO.IS","VESTL.IS","TOASO.IS",
         "TTRAK.IS","KCHOL.IS","SAHOL.IS","DOHOL.IS","ENKAI.IS","SISE.IS",
+        "CIMSA.IS","GUBRF.IS","PETKM.IS","TKFEN.IS","OTKAR.IS","AGHOL.IS",
+        "SASA.IS","BRSAN.IS","KRDMD.IS","AKSA.IS","ASTOR.IS","EREGL.IS",
     ],
     "₿ Kripto Büyük": [
         "BTC-USD","ETH-USD","BNB-USD","SOL-USD","XRP-USD","ADA-USD",
         "AVAX-USD","DOT-USD","MATIC-USD","LINK-USD","LTC-USD","BCH-USD",
+        "TON-USD","NEAR-USD","ICP-USD","APT-USD","ARB-USD","OP-USD",
+        "FIL-USD","ETC-USD","XLM-USD","HBAR-USD",
     ],
     "₿ Kripto Küçük & DeFi": [
         "DOGE-USD","SHIB-USD","TRX-USD","ATOM-USD","UNI-USD","AAVE-USD",
@@ -123,6 +150,14 @@ PERIODS = {
     "10 Yıl": "10y", "Maksimum": "max",
 }
 INTERVALS = {"Günlük": "1d", "Haftalık": "1wk", "Aylık": "1mo"}
+
+# Periyot etiketlerini gerçek gün sayısına çeviriyoruz; yfinance'in "period"
+# string'i bazı sürümlerde / Yahoo tarafında kısıtlı veri döndürebiliyor,
+# bu yüzden açık start/end tarihleri ile çekmek çok daha güvenilir.
+PERIOD_TO_DAYS = {
+    "1mo": 31, "3mo": 93, "6mo": 186, "1y": 366,
+    "2y": 731, "5y": 1827, "10y": 3653,
+}
 
 PLOTLY_BASE = dict(
     paper_bgcolor="#0d1117", plot_bgcolor="#0d1117",
@@ -195,13 +230,29 @@ def fmt(x, decimals=2, suffix=""):
 @st.cache_data(ttl=900, show_spinner=False)
 def download_prices(symbols_tuple, period, interval):
     symbols = list(symbols_tuple)
-    try:
-        raw = yf.download(
-            tickers=symbols, period=period, interval=interval,
-            auto_adjust=False, group_by="ticker", progress=False, threads=True,
-        )
-    except Exception:
-        return {}
+
+    def _run(**kwargs):
+        try:
+            return yf.download(
+                tickers=symbols, auto_adjust=False, group_by="ticker",
+                progress=False, threads=True, **kwargs,
+            )
+        except Exception:
+            return None
+
+    raw = None
+    if period == "max":
+        raw = _run(period="max", interval=interval)
+    else:
+        days = PERIOD_TO_DAYS.get(period, 366)
+        end = datetime.utcnow() + timedelta(days=1)
+        start = end - timedelta(days=days)
+        raw = _run(start=start, end=end, interval=interval)
+
+    # Açık tarih aralığı boş/başarısız dönerse, period string'i ile tekrar dene
+    if raw is None or raw.empty:
+        raw = _run(period=period, interval=interval)
+
     result = {}
     if raw is None or raw.empty:
         return result
@@ -660,15 +711,17 @@ def position_sizing(capital, risk_pct, entry, stop, target):
 st.markdown("""
 <div class="main-header">
   <div class="main-title">📊 Borsa & Kripto Pro Panel</div>
-  <div class="main-subtitle">Teknik & Temel Analiz · 19 Hazır Liste · Eğitim ve kişisel takip amaçlıdır — al-sat tavsiyesi değildir.</div>
+  <div class="main-subtitle">Teknik & Temel Analiz · 22 Hazır Liste · Eğitim ve kişisel takip amaçlıdır — al-sat tavsiyesi değildir.</div>
 </div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("### ⚙️ Panel Ayarları")
     preset_name = st.selectbox("Hazır Liste", list(PRESETS.keys()), index=0)
-    selected_symbols = st.multiselect("Sembol Seç", PRESETS[preset_name],
-        default=PRESETS[preset_name][:5], help="Birden fazla seçebilirsin.")
+    preset_list = PRESETS[preset_name]
+    default_count = min(20, len(preset_list))
+    selected_symbols = st.multiselect("Sembol Seç", preset_list,
+        default=preset_list[:default_count], help="Birden fazla seçebilirsin.")
     extra_text = st.text_area("Ek Sembol Ekle", value="",
         placeholder="Örn: META, AMD, BTC-USD, THYAO.IS")
     period_label   = st.selectbox("Veri Aralığı", list(PERIODS.keys()), index=4)
@@ -697,18 +750,14 @@ indicator_opts=dict(sma20=sma20,sma50=sma50,sma100=sma100,sma200=sma200,
 symbols = clean_symbols(selected_symbols + [extra_text])
 period = PERIODS[period_label]
 
-# Uzun dönemde günlük veri yfinance tarafından kısıtlanır — otomatik ayarla
-if period_label == "Maksimum":
+# Sadece "Maksimum" + "Günlük" kombinasyonunda haftalığa geçiyoruz; Yahoo'nun
+# çok uzun günlük serilerde bazen tüm geçmişi tek seferde döndürememesi
+# ihtimaline karşı bu daha güvenli. 5 Yıl / 10 Yıl günlük olarak kalabilir.
+if period_label == "Maksimum" and interval_label == "Günlük":
     interval = "1wk"
-elif period_label == "10 Yıl":
-    interval = "1wk"
-elif period_label in ("5 Yıl", "2 Yıl") and interval_label == "Günlük":
-    interval = "1d"  # 5Y günlük yfinance destekliyor
+    st.sidebar.info("📌 Maksimum dönem için tüm geçmişi garantilemek amacıyla haftalık periyot kullanılıyor.")
 else:
     interval = INTERVALS[interval_label]
-
-if period_label in ("Maksimum", "10 Yıl") and interval_label == "Günlük":
-    st.sidebar.info("📌 10Y/Maksimum için otomatik haftalık periyot kullanılıyor.")
 
 if not symbols:
     st.warning("Lütfen en az bir sembol seç veya yaz."); st.stop()
