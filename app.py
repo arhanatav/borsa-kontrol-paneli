@@ -524,29 +524,33 @@ def make_single_chart(symbol, df, chart_type, opts):
         fig.update_yaxes(title_text="OBV",title_font=dict(size=9),row=cur,col=1); cur+=1
 
     fig.update_layout(
-        height=820, xaxis_rangeslider_visible=False, hovermode="x unified",
-        title=dict(text=f"<b>{symbol}</b> — Teknik Grafik",font=dict(size=15,color="#f1f5f9")),
-        legend=dict(orientation="h",yanchor="bottom",y=1.01,xanchor="left",x=0,**LEGEND_STYLE),
+        height=840, xaxis_rangeslider_visible=False, hovermode="x unified",
+        title=dict(text=f"<b>{symbol}</b> — Teknik Grafik", font=dict(size=15, color="#f1f5f9"), x=0.5, xanchor="center"),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.08,
+            xanchor="right", x=1,
+            **LEGEND_STYLE,
+            traceorder="normal",
+        ),
         **PLOTLY_BASE,
     )
-    fig.update_yaxes(title_text="Fiyat",title_font=dict(size=9),row=1,col=1)
-    for i in range(1,sub_count+1):
-        fig.update_xaxes(gridcolor="#1e2d40",linecolor="#1e2d40",row=i,col=1)
-        fig.update_yaxes(gridcolor="#1e2d40",linecolor="#1e2d40",row=i,col=1)
+    fig.update_yaxes(title_text="Fiyat", title_font=dict(size=9), row=1, col=1)
+    for i in range(1, sub_count+1):
+        fig.update_xaxes(gridcolor="#1e2d40", linecolor="#1e2d40", row=i, col=1)
+        fig.update_yaxes(gridcolor="#1e2d40", linecolor="#1e2d40", tickfont=dict(size=10), row=i, col=1)
     fig.update_xaxes(rangeselector=dict(
-        bgcolor="#111827",activecolor="#1e3a5f",
-        font=dict(color="#94a3b8"),
+        bgcolor="#0d1117", activecolor="#1e3a5f",
+        bordercolor="#1e2d40", borderwidth=1,
+        font=dict(color="#94a3b8", size=11),
+        x=0, y=1.0, xanchor="left", yanchor="bottom",
         buttons=[
-            dict(count=1,label="1A",step="month",stepmode="backward"),
-            dict(count=3,label="3A",step="month",stepmode="backward"),
-            dict(count=6,label="6A",step="month",stepmode="backward"),
-            dict(count=1,label="1Y",step="year",stepmode="backward"),
-            dict(count=2,label="2Y",step="year",stepmode="backward"),
-            dict(count=5,label="5Y",step="year",stepmode="backward"),
-            dict(count=10,label="10Y",step="year",stepmode="backward"),
-            dict(step="all",label="Tümü"),
+            dict(count=1,  label="1A",  step="month", stepmode="backward"),
+            dict(count=6,  label="6A",  step="month", stepmode="backward"),
+            dict(count=1,  label="1Y",  step="year",  stepmode="backward"),
+            dict(count=5,  label="5Y",  step="year",  stepmode="backward"),
+            dict(count=10, label="10Y", step="year",  stepmode="backward"),
         ]
-    ),row=1,col=1)
+    ), row=1, col=1)
     return fig
 
 def make_compare_chart(price_dict):
@@ -691,7 +695,20 @@ indicator_opts=dict(sma20=sma20,sma50=sma50,sma100=sma100,sma200=sma200,
     ema9=ema9,ema21=ema21,ema55=ema55,bb=bb,vol=vol,rsi=rsi,macd=macd,stoch=stoch,obv=obv,vwap=vwap)
 
 symbols = clean_symbols(selected_symbols + [extra_text])
-period = PERIODS[period_label]; interval = INTERVALS[interval_label]
+period = PERIODS[period_label]
+
+# Uzun dönemde günlük veri yfinance tarafından kısıtlanır — otomatik ayarla
+if period_label == "Maksimum":
+    interval = "1wk"
+elif period_label == "10 Yıl":
+    interval = "1wk"
+elif period_label in ("5 Yıl", "2 Yıl") and interval_label == "Günlük":
+    interval = "1d"  # 5Y günlük yfinance destekliyor
+else:
+    interval = INTERVALS[interval_label]
+
+if period_label in ("Maksimum", "10 Yıl") and interval_label == "Günlük":
+    st.sidebar.info("📌 10Y/Maksimum için otomatik haftalık periyot kullanılıyor.")
 
 if not symbols:
     st.warning("Lütfen en az bir sembol seç veya yaz."); st.stop()
