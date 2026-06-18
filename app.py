@@ -39,37 +39,95 @@ hr { border-color: #1e2d40 !important; }
 """, unsafe_allow_html=True)
 
 PRESETS = {
-    "🇺🇸 Mega Cap ABD": ["AAPL","MSFT","NVDA","GOOGL","AMZN","META","TSLA","BRK-B","LLY","V","JPM","UNH","XOM","MA","JNJ"],
-    "🤖 Yapay Zeka & Tech": ["NVDA","AMD","MSFT","GOOGL","META","TSLA","AVGO","ARM","SMCI","PLTR","SNOW","AI","CRWD","PANW","NET"],
-    "📱 FAANG+": ["META","AAPL","AMZN","NFLX","GOOGL","MSFT","TSLA","NVDA"],
-    "🏦 Finans": ["JPM","BAC","WFC","GS","MS","C","BLK","AXP","V","MA","PYPL","SQ","COF","USB","PNC"],
-    "💊 Sağlık & İlaç": ["JNJ","UNH","PFE","MRK","ABBV","LLY","BMY","AMGN","GILD","CVS","HUM","CI","ABT","TMO","DHR"],
-    "⚡ Enerji": ["XOM","CVX","COP","SLB","EOG","MPC","PSX","VLO","OXY","HES","DVN","FANG","BKR","HAL","APA"],
-    "🏭 Sanayi": ["CAT","DE","HON","UPS","FDX","RTX","LMT","NOC","BA","GE","MMM","EMR","ITW","PH","ROK"],
-    "🛒 Tüketici": ["WMT","COST","TGT","HD","LOW","NKE","SBUX","MCD","CMG","YUM","DG","DLTR","KR"],
-    "🇹🇷 BIST Seçkinler": ["THYAO.IS","ASELS.IS","KCHOL.IS","GARAN.IS","EREGL.IS","BIMAS.IS","TUPRS.IS","SISE.IS","SAHOL.IS","TOASO.IS","ARCLK.IS","FROTO.IS","VESTL.IS","AKBNK.IS","YKBNK.IS"],
-    "🇹🇷 BIST Bankacılık": ["GARAN.IS","AKBNK.IS","YKBNK.IS","ISCTR.IS","HALKB.IS","VAKBN.IS","QNBFB.IS","ALBRK.IS"],
-    "🇹🇷 BIST Sanayi": ["EREGL.IS","TUPRS.IS","ARCLK.IS","FROTO.IS","VESTL.IS","TOASO.IS","TTRAK.IS"],
-    "₿ Kripto Büyük": ["BTC-USD","ETH-USD","BNB-USD","SOL-USD","XRP-USD","ADA-USD","AVAX-USD","DOT-USD","MATIC-USD","LINK-USD"],
-    "₿ Kripto Küçük": ["DOGE-USD","SHIB-USD","LTC-USD","TRX-USD","ATOM-USD","UNI-USD","AAVE-USD","CRV-USD"],
-    "📦 ETF Geniş Piyasa": ["SPY","QQQ","VOO","IWM","DIA","VTI","SCHB","RSP","MDY","IJR"],
-    "🌍 ETF Global": ["EFA","EEM","VWO","GXC","EWJ","EWG","EWU","INDA","EWZ","FXI"],
-    "🏗️ ETF Sektör": ["XLK","XLF","XLE","XLV","XLI","XLY","XLP","XLU","XLB","XLRE"],
-    "🥇 Emtia & Altın": ["GLD","SLV","GDX","GDXJ","USO","UNG","PDBC","DJP"],
-    "📊 Temettü": ["O","MAIN","ARCC","T","VZ","MO","PM","KO","PEP","JNJ","PG","IBM","CVX","XOM"],
-    "🚀 Büyüme Hisseleri": ["SHOP","SQ","ROKU","COIN","HOOD","RBLX","U","LYFT","UBER","ABNB","DASH","RIVN","PLTR"],
+    "🇺🇸 ABD Büyük Cap (S&P100)": [
+        "AAPL","MSFT","NVDA","GOOGL","AMZN","META","TSLA","BRK-B","LLY","V",
+        "JPM","UNH","XOM","MA","JNJ","AVGO","PG","HD","MRK","COST",
+        "ABBV","CVX","KO","PEP","WMT","BAC","CSCO","ACN","MCD","CRM",
+        "ABT","LIN","TMO","NKE","ORCL","DHR","TXN","PM","NEE","RTX",
+        "HON","SPGI","UPS","AMGN","QCOM","IBM","GS","CAT","INTU","ISRG",
+    ],
+    "🤖 Yapay Zeka & Yarı İletken": [
+        "NVDA","AMD","INTC","AVGO","QCOM","ARM","SMCI","MRVL","AMAT","KLAC",
+        "LRCX","ASML","TSM","MU","MSFT","GOOGL","META","PLTR","AI","SNOW",
+        "NET","CRWD","PANW","ZS","DDOG","GTLB","CFLT","VRT","DELL","HPE",
+    ],
+    "📱 Mega Tech FAANG+": [
+        "META","AAPL","AMZN","NFLX","GOOGL","MSFT","TSLA","NVDA",
+        "UBER","LYFT","SNAP","PINS","TWTR","SPOT","RBLX","U",
+    ],
+    "🏦 Finans & Bankacılık": [
+        "JPM","BAC","WFC","GS","MS","C","BLK","AXP","V","MA",
+        "PYPL","SQ","COF","USB","PNC","TFC","SCHW","IBKR","CME","ICE",
+        "MCO","SPGI","FIS","FISV","WEX","ALLY","SYF","DFS","COF","AIG",
+    ],
+    "💊 Sağlık & Biyoteknoloji": [
+        "JNJ","UNH","PFE","MRK","ABBV","LLY","BMY","AMGN","GILD","CVS",
+        "HUM","CI","ABT","TMO","DHR","ISRG","REGN","VRTX","BIIB","MRNA",
+        "ILMN","IQV","ZBH","BAX","BDX","SYK","MDT","EW","BSX","HOLX",
+    ],
+    "⚡ Enerji & Petrol": [
+        "XOM","CVX","COP","SLB","EOG","MPC","PSX","VLO","OXY","HES",
+        "DVN","FANG","BKR","HAL","APA","MRO","PXD","CTRA","AR","RRC",
+        "LNG","KMI","WMB","OKE","EPD","ET","MPLX","PAA","TRGP","ENB",
+    ],
+    "🏭 Sanayi & Savunma": [
+        "CAT","DE","HON","UPS","FDX","RTX","LMT","NOC","BA","GE",
+        "MMM","EMR","ITW","PH","ROK","ETN","AME","TDG","HII","L3H",
+        "LDOS","BAH","SAIC","CACI","DRS","TransDigm","AXON","MOOG","HWM","TXT",
+    ],
+    "🛒 Tüketici & Perakende": [
+        "WMT","COST","TGT","HD","LOW","NKE","SBUX","MCD","CMG","YUM",
+        "DG","DLTR","KR","AMZN","ETSY","EBAY","W","PTON","RH","WSM",
+        "BBY","GPS","ANF","AEO","URBN","PVH","RL","TPR","VFC","HBI",
+    ],
+    "🏠 Gayrimenkul & REIT": [
+        "O","AMT","PLD","EQIX","CCI","SPG","PSA","DLR","EXR","VICI",
+        "WELL","VTR","NNN","WPC","STORE","STAG","COLD","FR","EGP","REXR",
+    ],
+    "🌐 İletişim & Medya": [
+        "META","GOOGL","NFLX","DIS","CMCSA","T","VZ","CHTR","TMUS","DISH",
+        "WBD","PARA","FOXA","NYT","IAC","ZM","TWLO","BAND","LUMN","LBRDA",
+    ],
+    "🇹🇷 BIST Seçkinler": [
+        "THYAO.IS","ASELS.IS","KCHOL.IS","GARAN.IS","EREGL.IS","BIMAS.IS",
+        "TUPRS.IS","SISE.IS","SAHOL.IS","TOASO.IS","ARCLK.IS","FROTO.IS",
+        "VESTL.IS","AKBNK.IS","YKBNK.IS","ISCTR.IS","HALKB.IS","VAKBN.IS",
+        "TCELL.IS","TTKOM.IS","SODA.IS","BRISA.IS","DOHOL.IS","ENKAI.IS",
+    ],
+    "🇹🇷 BIST Bankacılık": [
+        "GARAN.IS","AKBNK.IS","YKBNK.IS","ISCTR.IS","HALKB.IS","VAKBN.IS","QNBFB.IS","ALBRK.IS",
+    ],
+    "🇹🇷 BIST Sanayi & Holding": [
+        "EREGL.IS","TUPRS.IS","ARCLK.IS","FROTO.IS","VESTL.IS","TOASO.IS",
+        "TTRAK.IS","KCHOL.IS","SAHOL.IS","DOHOL.IS","ENKAI.IS","SISE.IS",
+    ],
+    "₿ Kripto Büyük": [
+        "BTC-USD","ETH-USD","BNB-USD","SOL-USD","XRP-USD","ADA-USD",
+        "AVAX-USD","DOT-USD","MATIC-USD","LINK-USD","LTC-USD","BCH-USD",
+    ],
+    "₿ Kripto Küçük & DeFi": [
+        "DOGE-USD","SHIB-USD","TRX-USD","ATOM-USD","UNI-USD","AAVE-USD",
+        "CRV-USD","SNX-USD","COMP-USD","MKR-USD","SUSHI-USD","YFI-USD",
+    ],
+    "📦 ETF Geniş Piyasa": ["SPY","QQQ","VOO","IWM","DIA","VTI","SCHB","RSP","MDY","IJR","VXF","ITOT"],
+    "🌍 ETF Global & Gelişen": ["EFA","EEM","VWO","GXC","EWJ","EWG","EWU","INDA","EWZ","FXI","VEA","IEMG"],
+    "🏗️ ETF Sektör": ["XLK","XLF","XLE","XLV","XLI","XLY","XLP","XLU","XLB","XLRE","XLC","XBI"],
+    "🥇 Emtia & Altın": ["GLD","SLV","GDX","GDXJ","USO","UNG","PDBC","DJP","CPER","PALL"],
+    "📊 Yüksek Temettü": ["O","MAIN","ARCC","T","VZ","MO","PM","KO","PEP","JNJ","PG","MMM","IBM","CVX","XOM","ABBV","MRK","BMY"],
+    "🚀 Büyüme & Momentum": ["SHOP","SQ","ROKU","COIN","HOOD","RBLX","U","LYFT","UBER","ABNB","DASH","RIVN","PLTR","AFRM","OPEN"],
 }
 
 PERIODS = {
     "1 Ay": "1mo", "3 Ay": "3mo", "6 Ay": "6mo",
-    "1 Yıl": "1y", "2 Yıl": "2y", "5 Yıl": "5y", "Maksimum": "max",
+    "1 Yıl": "1y", "2 Yıl": "2y", "5 Yıl": "5y",
+    "10 Yıl": "10y", "Maksimum": "max",
 }
 INTERVALS = {"Günlük": "1d", "Haftalık": "1wk", "Aylık": "1mo"}
 
 PLOTLY_BASE = dict(
     paper_bgcolor="#0d1117", plot_bgcolor="#0d1117",
     font=dict(family="Inter, monospace", color="#94a3b8", size=11),
-    margin=dict(l=12, r=12, t=50, b=20),
+    margin=dict(l=70, r=20, t=55, b=20),
     hoverlabel=dict(bgcolor="#111827", bordercolor="#1e2d40", font=dict(color="#f1f5f9", size=12)),
 )
 
@@ -485,6 +543,7 @@ def make_single_chart(symbol, df, chart_type, opts):
             dict(count=1,label="1Y",step="year",stepmode="backward"),
             dict(count=2,label="2Y",step="year",stepmode="backward"),
             dict(count=5,label="5Y",step="year",stepmode="backward"),
+            dict(count=10,label="10Y",step="year",stepmode="backward"),
             dict(step="all",label="Tümü"),
         ]
     ),row=1,col=1)
@@ -670,10 +729,7 @@ tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs([
 ])
 
 with tab1:
-    if len(valid_symbols)>1:
-        st.plotly_chart(make_compare_chart(prices), use_container_width=True, theme=None)
-        st.divider()
-    chart_sym = st.selectbox("Tekli Grafik — Sembol", valid_symbols, index=0, key="csym")
+    chart_sym = st.selectbox("Sembol Seç", valid_symbols, index=0, key="csym")
     st.plotly_chart(make_single_chart(chart_sym,prices[chart_sym],chart_type,indicator_opts),
         use_container_width=True,theme=None)
     dfi = add_indicators(prices[chart_sym]).dropna(subset=["Close"])
